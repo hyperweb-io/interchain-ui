@@ -4,7 +4,7 @@
   "type": "module",
   "description": "UI building blocks for Interchain builders",
   "author": "yyyyaaa <phatghaa@gmail.com>",
-  "homepage": "https://github.com/cosmology-tech/interchain-ui/tree/main/packages/vue#readme",
+  "homepage": "https://github.com/hyperweb-io/interchain-ui/tree/main/packages/vue#readme",
   "license": "SEE LICENSE IN LICENSE",
   "source": "src/index.ts",
   "main": "/dist/index.cjs",

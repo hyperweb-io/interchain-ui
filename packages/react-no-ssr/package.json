@@ -3,7 +3,7 @@
   "version": "0.1.11",
   "description": "A simple component to skip rendering children on the server.",
   "author": "yyyyaaa <phatghaa@gmail.com>",
-  "homepage": "https://github.com/cosmology-tech/interchain-ui/tree/main/packages/react-no-ssr#readme",
+  "homepage": "https://github.com/hyperweb-io/interchain-ui/tree/main/packages/react-no-ssr#readme",
   "license": "SEE LICENSE IN LICENSE",
   "source": "src/index.ts",
   "main": "dist/main.js",
@@ -31,10 +31,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cosmology-tech/interchain-ui.git"
+    "url": "git+https://github.com/hyperweb-io/interchain-ui.git"
   },
   "bugs": {
-    "url": "https://github.com/cosmology-tech/interchain-ui/issues"
+    "url": "https://github.com/hyperweb-io/interchain-ui/issues"
   },
   "devDependencies": {
     "@eslint/compat": "^1.1.0",

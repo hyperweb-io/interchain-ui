@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "> TODO: description",
   "author": "yyyyaaa <phatghaa@gmail.com>",
-  "homepage": "https://github.com/cosmology-tech/interchain-ui/tree/main/packages/react-codemod#readme",
+  "homepage": "https://github.com/hyperweb-io/interchain-ui/tree/main/packages/react-codemod#readme",
   "license": "SEE LICENSE IN LICENSE",
   "source": "src/index.ts",
   "main": "dist/index.cjs.js",
@@ -68,9 +68,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cosmology-tech/interchain-ui.git"
+    "url": "git+https://github.com/hyperweb-io/interchain-ui.git"
   },
   "bugs": {
-    "url": "https://github.com/cosmology-tech/interchain-ui/issues"
+    "url": "https://github.com/hyperweb-io/interchain-ui/issues"
   }
 }

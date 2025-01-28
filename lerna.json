@@ -9,7 +9,7 @@
   "registry": "https://registry.npmjs.org",
   "command": {
     "create": {
-      "homepage": "https://github.com/cosmology-tech/interchain-ui",
+      "homepage": "https://github.com/hyperweb-io/interchain-ui",
       "license": "SEE LICENSE IN LICENSE",
       "access": "restricted"
     },

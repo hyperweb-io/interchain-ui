@@ -4,7 +4,7 @@
   "private": true,
   "description": "A Parcel Optimizer to unlink CSS assets from JS bundles",
   "author": "yyyyaaa <phatghaa@gmail.com>",
-  "homepage": "https://github.com/cosmology-tech/ui-kit/tree/main/packages/parcel-optimizer-unlink-css#readme",
+  "homepage": "https://github.com/hyperweb-io/ui-kit/tree/main/packages/parcel-optimizer-unlink-css#readme",
   "license": "SEE LICENSE IN LICENSE",
   "main": "index.js",
   "directories": {
@@ -21,11 +21,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cosmology-tech/interchain-ui.git"
+    "url": "git+https://github.com/hyperweb-io/interchain-ui.git"
   },
   "scripts": {},
   "bugs": {
-    "url": "https://github.com/cosmology-tech/interchain-ui/issues"
+    "url": "https://github.com/hyperweb-io/interchain-ui/issues"
   },
   "dependencies": {
     "@parcel/plugin": "^2.12.0",

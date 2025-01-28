@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cosmology-tech/interchain-ui.git"
+    "url": "https://github.com/hyperweb-io/interchain-ui.git"
   },
   "publishConfig": {
     "access": "restricted"

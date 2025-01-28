@@ -3,7 +3,7 @@
   "version": "1.26.1",
   "description": "UI building blocks for Interchain builders",
   "author": "yyyyaaa <phatghaa@gmail.com>",
-  "homepage": "https://github.com/cosmology-tech/ui-kit/tree/main/packages/react#readme",
+  "homepage": "https://github.com/hyperweb-io/ui-kit/tree/main/packages/react#readme",
   "license": "SEE LICENSE IN LICENSE",
   "source": "src/index.ts",
   "main": "dist/interchain-ui-kit-react.cjs.js",

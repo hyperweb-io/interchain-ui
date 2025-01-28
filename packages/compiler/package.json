@@ -4,7 +4,7 @@
   "private": true,
   "description": "Compiler for Interchain UI component",
   "author": "yyyyaaa <phatghaa@gmail.com>",
-  "homepage": "https://github.com/cosmology-tech/interchain-ui/tree/main/packages/compiler#readme",
+  "homepage": "https://github.com/hyperweb-io/interchain-ui/tree/main/packages/compiler#readme",
   "license": "SEE LICENSE IN LICENSE",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,14 +20,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cosmology-tech/interchain-ui.git"
+    "url": "git+https://github.com/hyperweb-io/interchain-ui.git"
   },
   "scripts": {
     "build": "tsc",
     "test": "jest"
   },
   "bugs": {
-    "url": "https://github.com/cosmology-tech/interchain-ui/issues"
+    "url": "https://github.com/hyperweb-io/interchain-ui/issues"
   },
   "dependencies": {
     "@babel/core": "^7.24.7",
