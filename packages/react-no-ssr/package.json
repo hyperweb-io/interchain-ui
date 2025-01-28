@@ -1,6 +1,6 @@
 {
   "name": "@interchain-ui/react-no-ssr",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "A simple component to skip rendering children on the server.",
   "author": "yyyyaaa <phatghaa@gmail.com>",
   "homepage": "https://github.com/hyperweb-io/interchain-ui/tree/main/packages/react-no-ssr#readme",
