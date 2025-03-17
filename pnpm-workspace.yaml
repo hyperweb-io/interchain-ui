@@ -1,3 +1,15 @@
 packages:
-  - 'packages/*'
-  - 'apps/*'
+  - packages/*
+  - apps/*
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@swc/core'
+  - core-js
+  - es5-ext
+  - esbuild
+  - lmdb
+  - msgpackr-extract
+  - nx
+  - postinstall-postinstall
+  - svelte-preprocess
+  - vue-demi

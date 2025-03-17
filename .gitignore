@@ -10,8 +10,6 @@ packages/**/dist/
 packages/**/lib/
 packages/**/types/
 storybook-static/
-packages/react/src
-packages/vue/src
 **/stats.html
 .idea
 /.yarnrc

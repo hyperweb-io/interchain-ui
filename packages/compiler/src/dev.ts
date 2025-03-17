@@ -6,6 +6,12 @@ import lodash from "lodash";
 import { compileReact } from "./frameworks/react.compile";
 import { command as execa } from "execa";
 
+// Track pending compilation operations
+const pendingOperations = {
+  isCompiling: false,
+  events: [] as Event[],
+};
+
 (async () => {
   let unsub: (() => void) | undefined;
 
@@ -61,59 +67,87 @@ import { command as execa } from "execa";
                 "packages/react/scaffolds",
               );
 
-              const onChange = lodash.debounce(
-                (err: Error | null, _events: Array<watcher.Event>) => {
-                  const spinner = ora(`Watching src/ for changes...`).start();
-                  spinner.text = `src/ changed, compiling...`;
+              // Enhanced event handler with batching
+              const handleEvents = async (events: Event[]): Promise<void> => {
+                // Add new events to pending batch
+                pendingOperations.events.push(...events);
 
-                  const t = +Date.now();
-                  const timingLabel = `[t:${t}] Recompile took`;
-                  console.time(timingLabel);
+                // If already compiling, just return - the events have been queued
+                if (pendingOperations.isCompiling) {
+                  return;
+                }
 
-                  const compilationPromise = compile(_events, {
-                    cancel: () => {},
-                  })
-                    .then(() => {
-                      spinner.succeed("Compiled successfully.");
-                      console.timeEnd(timingLabel);
-                    })
-                    .catch((e: Error) => {
-                      spinner.fail(`Error compiling mitosis ${e.message}.`);
-                    });
+                pendingOperations.isCompiling = true;
+                const spinner = ora(`Watching src/ for changes...`).start();
+                spinner.text = `src/ changed, compiling...`;
 
-                  if (err) {
-                    spinner.fail(
-                      `Error watching src/ for changes ${err?.message}.`,
-                    );
+                const t = +Date.now();
+                const timingLabel = `[t:${t}] Recompile took`;
+                console.time(timingLabel);
+
+                try {
+                  // Process all accumulated events
+                  const eventsToProcess = [...pendingOperations.events];
+                  pendingOperations.events = []; // Clear the queue
+
+                  await compile(eventsToProcess, { cancel: () => {} });
+                  spinner.succeed("Compiled successfully.");
+                  console.timeEnd(timingLabel);
+                } catch (e) {
+                  const error = e as Error;
+                  spinner.fail(`Error compiling mitosis ${error.message}.`);
+                } finally {
+                  pendingOperations.isCompiling = false;
+
+                  // If more events accumulated while we were compiling, process them now
+                  if (pendingOperations.events.length > 0) {
+                    // Small delay to prevent potential rapid consecutive compilations
+                    setTimeout(() => handleEvents([]), 100);
                   }
 
-                  return () => {
-                    if (compilationPromise) {
-                      compilationPromise.then(() => {
-                        spinner.stop();
-                      });
-                    }
-                  };
+                  spinner.stop();
+                }
+              };
+
+              // Smart debounce with shorter delay for initial changes and longer for subsequent changes
+              const onChange = lodash.debounce(
+                (err: Error | null, events: Array<watcher.Event>) => {
+                  if (err) {
+                    console.error(
+                      `Error watching for changes: ${err?.message}`,
+                    );
+                    return;
+                  }
+
+                  // Filter out irrelevant events (like .DS_Store files)
+                  const relevantEvents = events.filter(
+                    (event) =>
+                      !event.path.includes(".DS_Store") &&
+                      !event.path.includes(".git/"),
+                  );
+
+                  if (relevantEvents.length === 0) return;
+
+                  handleEvents(relevantEvents);
                 },
-                500,
+                300, // Shorter debounce time for better responsiveness
+                {
+                  leading: false,
+                  trailing: true,
+                  maxWait: 1000, // Maximum wait time for batching
+                },
               );
 
-              const watchSrc = watcher.subscribe(srcDir, (err, _events) => {
-                const cleanup = onChange(err, _events);
-
-                return () => {
-                  cleanup?.();
-                };
+              const watchSrc = watcher.subscribe(srcDir, (err, events) => {
+                onChange(err, events);
+                return () => {};
               });
 
               const watchScaffold = watcher.subscribe(
                 scaffoldDir,
-                (err, _events) => {
-                  const cleanup = onChange(err, _events);
-
-                  return () => {
-                    cleanup?.();
-                  };
+                (err, events) => {
+                  onChange(err, events);
+                  return () => {};
                 },
               );
 

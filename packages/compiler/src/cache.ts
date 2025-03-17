@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import fsSync from "fs";
 import crypto from "crypto";
+import log from "./log";
 
 function replacer(_key: string, value: unknown): unknown {
   if (value instanceof Map) {
@@ -15,16 +16,18 @@ function replacer(_key: string, value: unknown): unknown {
 
 class Cache {
   private cache: Map<string, string>;
+  private fileContentCache: Map<string, string>;
   public isPopulated: boolean;
 
   constructor() {
     // { <filePath>: <contentHash> }
     this.cache = new Map();
+    this.fileContentCache = new Map();
     this.isPopulated = false;
   }
 
   async build(filePaths: string[] | undefined = []): Promise<void> {
-    if (!filePaths) {
+    if (!filePaths || filePaths.length === 0) {
       return;
     }
 
@@ -32,16 +35,11 @@ class Cache {
       .filter((filePath) => fsSync.existsSync(filePath))
       .map(async (filePath) => {
         try {
-          const fileContent = await fs.readFile(filePath, "utf8");
+          const fileContent = await this.readFile(filePath);
           const hash = this.hash(fileContent);
-          // Check if the file still exists and its content hasn't changed
-          // before setting the cache to avoid race conditions
-          const currentContent = await fs.readFile(filePath, "utf8");
-          if (currentContent === fileContent) {
-            this.cache.set(filePath, hash);
-          }
+          this.cache.set(filePath, hash);
         } catch (err) {
-          console.error("Cannot build cache, error reading file ", filePath);
+          log.error(`Cannot build cache, error reading file ${filePath}`);
           // Don't throw here, allow other files to be processed
         }
       });
@@ -50,7 +48,9 @@ class Cache {
       await Promise.all(promises);
       this.isPopulated = true;
     } catch (err) {
-      console.error("Cannot build cache ", err);
+      log.error(
+        `Cannot build cache: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
@@ -59,7 +59,8 @@ class Cache {
   }
 
   private hash(source: string): string {
-    return crypto.createHash("sha1").update(source).digest("base64");
+    // Using base64url for smaller hash strings (no padding needed)
+    return crypto.createHash("sha1").update(source).digest("base64url");
   }
 
   has(filePath: string): boolean {
@@ -73,6 +74,18 @@ class Cache {
   set(filePath: string, source: string): void {
     const hash = this.hash(source);
     this.cache.set(filePath, hash);
+    this.fileContentCache.set(filePath, source);
+  }
+
+  // Read file with caching
+  private async readFile(filePath: string): Promise<string> {
+    if (this.fileContentCache.has(filePath)) {
+      return this.fileContentCache.get(filePath)!;
+    }
+
+    const content = await fs.readFile(filePath, "utf8");
+    this.fileContentCache.set(filePath, content);
+    return content;
   }
 
   // Check if file content changed
@@ -82,14 +95,26 @@ class Cache {
     }
 
     try {
-      const fileContent = await fs.readFile(filePath, "utf8");
+      const fileContent = await this.readFile(filePath);
       const currentHash = this.hash(fileContent);
       const prevHash = this.cache.get(filePath);
       return prevHash !== currentHash;
     } catch (err) {
-      console.error("isDiff error ", err);
+      log.error(
+        `isDiff error: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return true;
     }
+  }
+
+  // Clear file content cache for a specific path
+  clearFileCache(filePath: string): void {
+    this.fileContentCache.delete(filePath);
+  }
+
+  // Clear all file content caches
+  clearAllFileCaches(): void {
+    this.fileContentCache.clear();
   }
 }
 

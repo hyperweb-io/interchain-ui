@@ -3,6 +3,7 @@ import commandLineArgs from "command-line-args";
 import util from "util";
 import { exec as execCallback } from "child_process";
 import { command as execa } from "execa";
+import ora from "ora";
 
 const exec = util.promisify(execCallback);
 
@@ -11,6 +12,7 @@ interface CliConfig {
   platforms: string[];
   lint: boolean;
   "no-lint"?: boolean;
+  concurrency?: number;
 }
 
 const optionDefinitions: commandLineArgs.OptionDefinition[] = [
@@ -25,14 +27,35 @@ const optionDefinitions: commandLineArgs.OptionDefinition[] = [
   },
   { name: "lint", type: Boolean, defaultValue: true },
   { name: "no-lint", type: Boolean },
+  {
+    name: "concurrency",
+    alias: "c",
+    type: Number,
+    defaultValue: 4, // Default to 4 concurrent processes
+  },
 ];
+
+// Add a comment for clarity even though we removed the description property
+// concurrency: Number of concurrent compilation processes (1-8)
 
 const shouldMinify = process.env.MINIFY === "true";
 const shouldSkipBundling = process.env.NO_BUILD === "true";
 
 (async () => {
+  const startTime = Date.now();
   const cliConfig = commandLineArgs(optionDefinitions) as CliConfig;
   cliConfig.lint = cliConfig.lint && !cliConfig["no-lint"]; // TODO: add linting
+
+  // Limit concurrency to reasonable values
+  if (
+    cliConfig.concurrency &&
+    (cliConfig.concurrency < 1 || cliConfig.concurrency > 8)
+  ) {
+    console.warn(
+      `Concurrency value ${cliConfig.concurrency} is out of range (1-8), defaulting to 4`,
+    );
+    cliConfig.concurrency = 4;
+  }
 
   const tasks = new Listr([
     {
@@ -54,7 +77,11 @@ const shouldSkipBundling = process.env.NO_BUILD === "true";
 
                 const cleanCmd = `rimraf packages/${platformPkgRoot}/{src,dist,lib,types,stats.html}`;
                 task.output = `Cleaning dir: ${cleanCmd}`;
-                return exec(cleanCmd);
+                return exec(cleanCmd).catch((error) => {
+                  console.error(`Error cleaning directories: ${error.message}`);
+                  // Continue even if cleaning fails
+                  return Promise.resolve();
+                });
               },
             },
           ],
@@ -67,28 +94,45 @@ const shouldSkipBundling = process.env.NO_BUILD === "true";
         cliConfig.elements?.join(", ") || "all"
       }`,
       task: () => {
+        const spinner = ora("Preparing compilation...").start();
+
         return new Listr(
           cliConfig.platforms.map((platform) => ({
             title: `Compile ${platform}`,
-            task: () =>
-              execa(
+            task: () => {
+              spinner.text = `Compiling ${platform}...`;
+              return execa(
                 `tsx packages/compiler/src/frameworks/${platform}.compile.ts ${
                   cliConfig.elements
                     ? `--elements ${cliConfig.elements.join(" ")}`
                     : ""
                 }`,
-              ).catch((error: Error) => {
-                throw new Error(`Error compiling ${platform} ${error.message}`);
-              }),
+              )
+                .catch((error: Error) => {
+                  spinner.fail(`Error compiling ${platform}`);
+                  throw new Error(
+                    `Error compiling ${platform} ${error.message}`,
+                  );
+                })
+                .finally(() => {
+                  spinner.succeed(`Compiled ${platform}`);
+                });
+            },
           })),
-          { concurrent: true },
+          {
+            concurrent: cliConfig.concurrency || true,
+            exitOnError: false, // Continue with other platforms if one fails
+          },
         );
       },
     },
     {
       title: `Bundle Packages: ${cliConfig.platforms?.join(", ") || ""}`,
-      task: async () => {
-        if (shouldSkipBundling) return true;
+      task: async (_, task) => {
+        if (shouldSkipBundling) {
+          task.skip("Skipping bundling (NO_BUILD=true)");
+          return;
+        }
 
         const platforms = Array.isArray(cliConfig.platforms)
           ? cliConfig.platforms
@@ -102,12 +146,14 @@ const shouldSkipBundling = process.env.NO_BUILD === "true";
         const filters = `--filter "@interchain-ui/${platformGlob}"`;
 
         const buildCmd = `pnpm run --stream ${filters} build`;
+        task.output = `Running: ${buildCmd}`;
 
         try {
           await exec(buildCmd);
 
           if (shouldMinify) {
             const minifyCssCmd = `pnpm run --stream ${filters} minifyCss`;
+            task.output = `Running: ${minifyCssCmd}`;
             await exec(minifyCssCmd);
           }
         } catch (error) {
@@ -117,7 +163,15 @@ const shouldSkipBundling = process.env.NO_BUILD === "true";
     },
   ]);
 
-  tasks.run().catch((err: Error) => {
-    console.error(err);
-  });
+  tasks
+    .run()
+    .then(() => {
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+      console.log(`🚀 Compilation completed in ${duration.toFixed(2)}s`);
+    })
+    .catch((err: Error) => {
+      console.error(err);
+      process.exit(1);
+    });
 })();
