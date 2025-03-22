@@ -13,84 +13,102 @@ const DEFAULT_OPTIONS = {
   styles: "",
 };
 
+// Keep track of processed components to avoid duplicate logs
+const processedComponents = new Set<string>();
+
 function customReplaceVue(props: CustomReplaceProps): void {
   const { name, pascalName, outFile, outPath, isFirstCompilation } = props;
 
-  log.info(`\nCompiling ${name} [${pascalName}] for Vue...`);
-
-  if (isFirstCompilation) {
-    const data = fs.readFileSync(`${outPath}/src/index.ts`, "utf8");
-
-    log.info("\n ============== before edit index.ts =========== \n" + data);
-
-    const result = data
-      // Add .vue to index and filter by compileAllowList
-      .replace(
-        /(export)(.*)\/ui\/(?!.*(\.css|\.css\.ts)")(.+)";/g,
-        (match, p1, p2, p3, p4) => {
-          const componentName = p4.split("/").pop();
-          return compileAllowList["vue"]?.includes(componentName)
-            ? `${p1}${p2}/ui/${componentName}/${componentName}.vue";`
-            : "";
-        },
-      )
-      .replace(/(extensions)\/(.*)\.vue/g, "$1/$2")
-      .replace(/\/helpers\.vue/g, "")
-      // Add .vue and a subpath to each export, and filter by compileAllowList
-      .replace(
-        /(export { default as (\w+) } from '\.\/ui\/)([^';]+)';/g,
-        (match, p1, p2, p3) => {
-          return compileAllowList["vue"]?.includes(p3)
-            ? `${p1}${p3}/${p3}.vue';`
-            : "";
-        },
-      )
-      // Remove empty lines created by filtered out exports
-      .replace(/^\s*[\r\n]/gm, "");
-
-    log.warn("\n ============== after edit index.ts =========== \n" + result);
-
-    fs.writeFileSync(`${outPath}/src/index.ts`, result, "utf8");
-
-    // Add .vue extension to all the indexes in src folder
-    globSync(`${outPath}/src/ui/**/index.ts`).forEach((src: string) => {
-      const data = fs
-        .readFileSync(src, "utf8")
-        // add vue to index
-        .replace(/(export { default } from)(.*)(';)/g, "$1$2.vue$3")
-        // but remove from hooks
-        .replace(/\.hook\.vue/g, ".hook");
-
-      fs.writeFileSync(src, data, "utf8");
-    });
+  // Skip if we've already processed this component
+  if (processedComponents.has(outFile)) {
+    return;
   }
 
-  const data = fs.readFileSync(outFile, "utf8");
+  // Mark as processed
+  processedComponents.add(outFile);
 
-  let result = data;
+  // Use the group logging feature to ensure all logs for this component stay together
+  const componentLogger = log.group(`Vue Component: ${pascalName}`);
 
-  const transforms = [
-    patchPropsDestructuring,
-    // TODO: work on TS output later
-    // Need to parse + follow imports and resolve + inline types in the .vue files
-    // addPathAliasToHelperTypeImports,
-    // addPathAliasToRelativeTypeImports,
-    // (fileData) => inlineTypes(fileData, name, pascalName),
-  ];
+  try {
+    componentLogger.info(`Compiling ${name} [${pascalName}] for Vue...`);
 
-  result = transforms.reduce((acc, transform) => {
-    acc = transform(acc);
-    return acc;
-  }, result);
+    if (isFirstCompilation) {
+      const data = fs.readFileSync(`${outPath}/src/index.ts`, "utf8");
 
-  fs.writeFileSync(outFile, result, "utf8");
+      if (data) {
+        componentLogger.info("Processing index.ts");
+
+        const result = data
+          // Add .vue to index and filter by compileAllowList
+          .replace(
+            /(export)(.*)\/ui\/(?!.*(\.css|\.css\.ts)")(.+)";/g,
+            (match, p1, p2, p3, p4) => {
+              const componentName = p4.split("/").pop();
+              return compileAllowList["vue"]?.includes(componentName)
+                ? `${p1}${p2}/ui/${componentName}/${componentName}.vue";`
+                : "";
+            },
+          )
+          .replace(/(extensions)\/(.*)\.vue/g, "$1/$2")
+          .replace(/\/helpers\.vue/g, "")
+          // Add .vue and a subpath to each export, and filter by compileAllowList
+          .replace(
+            /(export { default as (\w+) } from '\.\/ui\/)([^';]+)';/g,
+            (match, p1, p2, p3) => {
+              return compileAllowList["vue"]?.includes(p3)
+                ? `${p1}${p3}/${p3}.vue';`
+                : "";
+            },
+          )
+          // Remove empty lines created by filtered out exports
+          .replace(/^\s*[\r\n]/gm, "");
+
+        fs.writeFileSync(`${outPath}/src/index.ts`, result, "utf8");
+
+        // Add .vue extension to all the indexes in src folder
+        globSync(`${outPath}/src/ui/**/index.ts`).forEach((src: string) => {
+          const data = fs
+            .readFileSync(src, "utf8")
+            // add vue to index
+            .replace(/(export { default } from)(.*)(';)/g, "$1$2.vue$3")
+            // but remove from hooks
+            .replace(/\.hook\.vue/g, ".hook");
+
+          fs.writeFileSync(src, data, "utf8");
+        });
+      }
+    }
+
+    componentLogger.success(`Compiled ${pascalName} successfully`);
+  } catch (error) {
+    componentLogger.error(
+      `Error processing ${pascalName}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  } finally {
+    componentLogger.end();
+  }
 }
 
 const compileVue = async (): Promise<void> => {
-  await compiler.compile({
-    ...DEFAULT_OPTIONS,
-    customReplace: customReplaceVue,
-  });
+  // Clear the processed components set for a fresh compilation
+  processedComponents.clear();
+
+  const compileLogger = log.group("Vue Compilation");
+
+  try {
+    await compiler.compile({
+      ...DEFAULT_OPTIONS,
+      customReplace: customReplaceVue,
+    });
+    compileLogger.success("Vue compilation completed successfully");
+  } catch (error) {
+    compileLogger.error(
+      `Vue compilation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  } finally {
+    compileLogger.end();
+  }
 };
 
 if (require.main === module) {
