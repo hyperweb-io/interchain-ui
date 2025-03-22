@@ -11,5 +11,6 @@ onlyBuiltDependencies:
   - msgpackr-extract
   - nx
   - postinstall-postinstall
+  - sharp
   - svelte-preprocess
   - vue-demi
